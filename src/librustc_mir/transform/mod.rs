@@ -258,6 +258,11 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
 
         // Optimizations begin.
         inline::Inline,
+
+        // Lowering generator control-flow and variables
+        // has to happen before we do anything else to them.
+        generator::StateTransform,
+
         instcombine::InstCombine,
         deaggregator::Deaggregator,
         copy_prop::CopyPropagation,
