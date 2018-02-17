@@ -50,5 +50,6 @@ struct S1k<T> { val: S32<S32<T>> }
 struct S1M<T> { val: S1k<S1k<T>> }
 
 fn main() {
-    let fat: Option<S1M<S1M<S1M<u32>>>> = None;
+    let big: Option<S1M<S1M<S1M<u32>>>> = None;
+    std::mem::drop(&big); // HACK(eddyb) avoid `big` being optimized away.
 }
