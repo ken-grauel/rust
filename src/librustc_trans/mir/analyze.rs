@@ -177,35 +177,42 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
     }
 
     fn visit_local(&mut self,
-                   &index: &mir::Local,
+                   &local: &mir::Local,
                    context: PlaceContext<'tcx>,
                    _: Location) {
         match context {
             PlaceContext::Call => {
-                self.mark_assigned(index);
+                self.mark_assigned(local);
             }
 
             PlaceContext::StorageLive |
             PlaceContext::StorageDead |
-            PlaceContext::Validate |
+            PlaceContext::Validate => {}
+
             PlaceContext::Copy |
-            PlaceContext::Move => {}
+            PlaceContext::Move => {
+                // Reads from uninitialized variables (e.g. in dead code, after
+                // optimizations) require locals to be in (uninitialized) memory.
+                if !self.seen_assigned.contains(local.index()) {
+                    self.mark_as_memory(local);
+                }
+            }
 
             PlaceContext::Inspect |
             PlaceContext::Store |
             PlaceContext::AsmOutput |
             PlaceContext::Borrow { .. } |
             PlaceContext::Projection(..) => {
-                self.mark_as_memory(index);
+                self.mark_as_memory(local);
             }
 
             PlaceContext::Drop => {
-                let ty = mir::Place::Local(index).ty(self.fx.mir, self.fx.cx.tcx);
+                let ty = mir::Place::Local(local).ty(self.fx.mir, self.fx.cx.tcx);
                 let ty = self.fx.monomorphize(&ty.to_ty(self.fx.cx.tcx));
 
                 // Only need the place if we're actually dropping it.
                 if self.fx.cx.type_needs_drop(ty) {
-                    self.mark_as_memory(index);
+                    self.mark_as_memory(local);
                 }
             }
         }
